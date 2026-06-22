@@ -114,24 +114,33 @@ void updateDisplay() {
     return;
   }
   
-  // Read motor 2 position and temperature directly from last result
+  // Read motor values from last_result (updated by main loop's 20Hz SetQuery)
   const auto& motor1 = moteus1.last_result().values;
   const auto& motor2 = moteus2.last_result().values;
   float m2_pos  = motor2.abs_position;
   float m1_temp = motor1.motor_temperature;
   float m2_temp = motor2.motor_temperature;
-  
+
+  // Cache last valid abs_position (stays visible after SetStop clears it)
+  static float cached_m2_pos = NAN;
+  if (!isnan(m2_pos)) {
+    cached_m2_pos = m2_pos;
+  }
+  float display_m2_pos = isnan(cached_m2_pos) ? NAN : cached_m2_pos;
+
   // Convert raw encoder (0~1, center=0.5) to degrees (-90~+90)
-  float m2_deg = (m2_pos - ENCODER_CENTER) * 360.0;
-  
+  float m2_deg = isnan(display_m2_pos) ? NAN : (display_m2_pos - ENCODER_CENTER) * 360.0;
+
   // Debug: print motor values to serial
   static unsigned long lastMotorDebug = 0;
   if (currentTime - lastMotorDebug > 2000) {
-    Serial.print(F("[Display] M2="));
-    Serial.print(m2_deg, 0);
-    Serial.print(F("deg "));
-    Serial.print(m2_temp, 0);
-    Serial.print(F("C State="));
+    Serial.print(F("[Display] M2_abs="));
+    Serial.print(m2_pos, 4);
+    Serial.print(F(" deg="));
+    Serial.print(isnan(m2_deg) ? -9999.0 : m2_deg, 1);
+    Serial.print(F(" temp="));
+    Serial.print(m2_temp, 1);
+    Serial.print(F(" state="));
     Serial.println(xbeeControlActive ? "ENGAGED" : "DISENGAGED");
     lastMotorDebug = currentTime;
   }
@@ -157,7 +166,11 @@ void updateDisplay() {
   display.print(F("Pos:"));
   display.setCursor(30, 11);
   display.setTextSize(2);
-  display.print((int)m2_deg);
+  if (isnan(m2_deg)) {
+    display.print(F("N/A"));
+  } else {
+    display.print((int)m2_deg);
+  }
   display.setTextSize(1);
   display.print(F("deg"));
 

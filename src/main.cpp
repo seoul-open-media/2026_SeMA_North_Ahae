@@ -140,7 +140,61 @@ void loop() {
     
     moteus1.SetQuery(&query_fmt);
     moteus2.SetQuery(&query_fmt);
-    
+
+    // Fault detection & auto-recovery
+    // Mode 1 = kFault. SetStop() clears the fault and returns to mode 0 (kStopped).
+    int m1_mode = static_cast<int>(moteus1.last_result().values.mode);
+    int m2_mode = static_cast<int>(moteus2.last_result().values.mode);
+    int m1_fault = static_cast<int>(moteus1.last_result().values.fault);
+    int m2_fault = static_cast<int>(moteus2.last_result().values.fault);
+
+    static bool fault_reported = false;
+    if (m1_mode == 1 || m2_mode == 1) {
+      if (!fault_reported) {
+        Serial.print(F("[FAULT] M1 mode="));
+        Serial.print(m1_mode);
+        Serial.print(F(" fault="));
+        Serial.print(m1_fault);
+        Serial.print(F(" | M2 mode="));
+        Serial.print(m2_mode);
+        Serial.print(F(" fault="));
+        Serial.println(m2_fault);
+        Serial.println(F("[FAULT] Sending SetStop to clear fault..."));
+        displayError("FAULT! Clearing");
+        fault_reported = true;
+      }
+      // Send SetStop 3 times to ensure fault is cleared
+      for (int i = 0; i < 3; i++) {
+        moteus1.SetStop();
+        moteus2.SetStop();
+        delay(5);
+      }
+      commandRunning = false;
+      xbeeControlActive = false;
+    } else {
+      if (fault_reported) {
+        Serial.println(F("[FAULT] Fault cleared — motors ready"));
+        displayDebug("Fault cleared");
+        fault_reported = false;
+      }
+    }
+
+    // CAN RX health check
+    static unsigned long lastCanDebug = 0;
+    if (currentTime - lastCanDebug > 2000) {
+      float m1_temp = moteus1.last_result().values.motor_temperature;
+      float m1_abs  = moteus1.last_result().values.abs_position;
+      Serial.print(F("[CAN] M1 mode="));
+      Serial.print(m1_mode);
+      Serial.print(F(" abs="));
+      Serial.print(m1_abs, 4);
+      Serial.print(F(" temp="));
+      Serial.println(m1_temp, 1);
+      if (isnan(m1_temp) && isnan(m1_abs)) {
+        Serial.println(F("[CAN] WARNING: Motor not responding to queries!"));
+      }
+      lastCanDebug = currentTime;
+    }
     lastQueryTime = currentTime;
   }
   
