@@ -34,12 +34,8 @@ const float MAX_POSITION = 0.25;
 // REMOVED: Unused motor velocity limits (xbeeMaxVelM1, xbeeMaxVelM2)
 
 void initXBee() {
-  // [XBee DISABLED] Serial4 XBee communication commented out
-  // Serial4.begin(XBEE_BAUD);  // XBee on Serial4
-  // Serial.println(F("XBee initialized on Serial4"));
-  
-  // Wired serial uses Serial (USB, 115200) already initialized in main.cpp
-  Serial.println(F("Wired serial control active (Serial USB, 115200)"));
+  Serial4.begin(XBEE_BAUD);
+  Serial.println(F("XBee initialized on Serial4 (115200)"));
   Serial.print(F("Robot ID: "));
   Serial.println(ROBOT_ID);
   
@@ -48,11 +44,81 @@ void initXBee() {
   displayDebug(buf);
 }
 
-// [XBee DISABLED] updateXBee() commented out — XBee wireless communication disabled
-// void updateXBee() { ... }  // Used Serial4 at 115200 for XBee radio packets
+// ——————————————————————————————————————————————————————————————————————————————
+// XBee Wireless Binary Protocol (Serial4, 115200)
+// Protocol: [0xFF] [0xFF] [R1_MSB] [R1_LSB] ... [R13_MSB] [R13_LSB] = 28 bytes
+// ——————————————————————————————————————————————————————————————————————————————
+void updateXBee() {
+  if (Serial4.available() == 0) return;
+  if (Serial4.peek() != 0xFF) { Serial4.read(); return; }  // skip garbage
+
+  static unsigned long packetStartTime = 0;
+  if (packetStartTime == 0) packetStartTime = millis();
+
+  if (Serial4.available() < 28) {
+    if (millis() - packetStartTime > 100) {
+      while (Serial4.available()) Serial4.read();
+      packetStartTime = 0;
+    }
+    return;
+  }
+
+  packetStartTime = 0;
+  Serial4.read();  // discard first 0xFF
+  uint8_t byte2 = Serial4.read();
+  if (byte2 != 0xFF) {
+    while (Serial4.available()) Serial4.read();
+    return;
+  }
+
+  uint8_t robot_data[26];
+  for (int i = 0; i < 26; i++) robot_data[i] = Serial4.read();
+
+  if (ROBOT_ID < 1 || ROBOT_ID > 13) return;
+
+  int idx = (ROBOT_ID - 1) * 2;
+  uint8_t msb = robot_data[idx];
+  uint8_t lsb = robot_data[idx + 1];
+  uint16_t value = ((uint16_t)msb << 8) | lsb;
+  if (value == 0) return;
+
+  uint8_t digit1 = (value / 1000) % 10;  // Max speed (0-9)
+  uint8_t digit2 = (value / 100)  % 10;  // Ignored
+  uint8_t digit3 = (value / 10)   % 10;  // Angle (0-9)
+  uint8_t digit4 =  value         % 10;  // Solenoid
+
+  char displayBuf[32];
+  snprintf(displayBuf, sizeof(displayBuf), "XB:%04d (%d%d%d%d)", value, digit1, digit2, digit3, digit4);
+  displayDebug(displayBuf);
+
+  Serial.print(F("[XBee] "));
+  Serial.print(digit1); Serial.print(digit2); Serial.print(digit3); Serial.println(digit4);
+
+  const float MIN_VELOCITY = 0.3f;
+  float max_speed = MIN_VELOCITY + ((float)digit1 / 9.0f) * (MAX_VELOCITY_FAST - MIN_VELOCITY);
+  if (max_speed < MIN_VELOCITY) max_speed = MIN_VELOCITY;
+
+  float angle_deg    = ((float)digit3 / 9.0f) * 180.0f - 90.0f;
+  float pos2_logical = angle_deg / 360.0f;
+  if (pos2_logical < MIN_POSITION) pos2_logical = MIN_POSITION;
+  if (pos2_logical > MAX_POSITION) pos2_logical = MAX_POSITION;
+  float pos2 = ENCODER_CENTER + pos2_logical + MOTOR_OFFSET;
+
+  if (digit4 == 1) { triggerElectromagnets(); }
+  else if (digit4 == 2) { triggerTypeA_2(); }
+
+  Moteus::Query::Format query_fmt;
+  query_fmt.abs_position = Moteus::kFloat;
+  moteus1.SetQuery(&query_fmt);
+  delay(5);
+  double current_ext1 = moteus1.last_result().values.abs_position;
+
+  moveToEncoderPosition(current_ext1, pos2, max_speed);
+}
 
 // ——————————————————————————————————————————————————————————————————————————————
-// Wired Serial Binary Protocol (replaces XBee)
+// Wired Serial Binary Protocol (kept for reference, not called)
+// Protocol: [0xFF] [0xFF] [R1_MSB] [R1_LSB] ... [R13_MSB] [R13_LSB] = 28 bytes
 // Protocol: [0xFF] [0xFF] [R1_MSB] [R1_LSB] ... [R13_MSB] [R13_LSB]
 // Total: 2 header + 26 data bytes = 28 bytes
 // Source: Pure Data (PD) over USB Serial at 115200 baud

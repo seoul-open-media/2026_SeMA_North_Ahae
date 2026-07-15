@@ -11,13 +11,12 @@ extern bool xbeeControlActive;
 extern float xbeeTargetM1;
 extern float xbeeTargetM2;
 
-// XBee communication functions (Serial4 disabled — see updateWiredSerial)
+// XBee communication functions (Serial4)
 void initXBee();
-// void updateXBee();        // [DISABLED] XBee wireless via Serial4
+void updateXBee();
 void updateXBeeControl();
 
-// Wired serial binary protocol (replaces XBee)
-// Receives same [0xFF][0xFF][R1_MSB][R1_LSB]...[R13_MSB][R13_LSB] over Serial (USB, 115200)
+// Wired serial binary protocol (kept for reference)
 void updateWiredSerial();
 
 #endif

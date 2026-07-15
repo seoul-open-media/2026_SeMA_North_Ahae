@@ -55,8 +55,7 @@ void setup() {
  // scanI2C();
   
   // Initialize XBee on Serial4
-  // initXBee();  // [XBee DISABLED] — XBee on Serial4 commented out
-  Serial.println(F("Wired serial control active (USB Serial, 115200)"));
+  initXBee();
   Serial.print(F("Robot ID: "));
   Serial.println(ROBOT_ID);
   
@@ -208,12 +207,8 @@ void loop() {
   // Update OLED display with current motor status
   updateDisplay();
   
-  // Check wired serial for binary packets from PD (same protocol as XBee)
-  updateWiredSerial();
-  
-  // [XBee DISABLED] XBee wireless communication commented out
-  // updateXBee();          // Was: XBee via Serial4
-  // updateXBeeControl();   // No-op anyway
+  // XBee wireless communication via Serial4
+  updateXBee();
   
   // Update electromagnet/solenoid timing
   updateSolenoid();
