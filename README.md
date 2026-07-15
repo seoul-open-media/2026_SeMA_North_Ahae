@@ -2,14 +2,15 @@
 ## 브랜치: Ahae_MoCA_Busan_2026
 
 ## 개요
-Moteus R4.11 모터 컨트롤러 1개를 CANBed FD 보드로 제어합니다.  
-AS5600 외부 앤코더(AUX2)로 절대 위치를 피드백받으며, 속도 기반 제어와 안전 기능을 포함합니다.  
+Moteus C1 모터 컨트롤러 1개를 CANBed FD 보드로 제어합니다.  
+AS5600 외부 앤코더(AUX2)로 절대 위치를 피드백받으며, Aux2에 5V 팬을 함께 연결한 구성입니다. 속도 기반 제어와 안전 기능을 포함합니다.  
 **무선 XBee 통신은 비활성화**되어 있으며, Pure Data(PD)에서 USB 유선 시리얼로 명령을 수신합니다.
 
 ## 하드웨어
-- **모터 컨트롤러**: Moteus R4.11 × 1 (ID: 2)
+- **모터 컨트롤러**: Moteus C1 × 1 (ID: 2)
 - **통신**: CANBed FD (Longan Labs) — CAN bus 1Mbit
 - **앤코더**: AS5600 마그네틱 앤코더 (AUX2 포트)
+- **냉각**: 5V 팬 (Moteus C1 Aux2 연결)
 - **마이크로컨트롤러**: Teensy MicroMod (teensymm)
 - **디스플레이**: Adafruit 128×64 OLED (SSD1306) — I2C bus 1 (Wire1), 주소 0x3C
 - **작동기**: 전자석(EM) 3개 + 솔레노이드 1개
@@ -240,6 +241,9 @@ platformio run --target upload
 - Connected via AUX2 port on Moteus
 - 21:1 gear ratio between motor and encoder
 - Readings in external encoder revolutions
+
+### Aux2 Peripheral
+- Aux2 is configured with AS5600 and a 5V cooling fan
 
 ### CAN Bus Configuration
 - 1Mbit bus speed

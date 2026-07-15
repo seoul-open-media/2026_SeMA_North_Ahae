@@ -5,7 +5,7 @@ XBee 무선 통신을 통한 다중 로봇 제어 시스템. Pure Data와 통합
 
 ## 하드웨어
 - **마이크로컨트롤러**: Teensy MicroMod
-- **모터 컨트롤러**: 2x Moteus R4.11 (ID 1, 2)
+- **모터 컨트롤러**: 2x Moteus C1 (ID 1, 2)
 - **펌웨어**: Moteus v268 (안정적 작동 확인)
 - **라이브러리**: mjbots/Moteus@^1.0.2
 - **무선 통신**: XBee (Serial4, 115200 baud)
